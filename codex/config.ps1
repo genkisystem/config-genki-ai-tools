@@ -120,7 +120,9 @@ and (.model_providers.genki | type == "object")
 and (.model_providers.genki | has("experimental_bearer_token"))
 '@
 
-    $tokenExistsOutput = & $FqPath -r $tokenExistsQuery $CurrentPath 2>&1
+    $tokenExistsQueryPath = Join-Path $TemporaryDirectory 'token-exists.fq'
+    [IO.File]::WriteAllText($tokenExistsQueryPath, $tokenExistsQuery, [Text.UTF8Encoding]::new($false))
+    $tokenExistsOutput = & $FqPath -r -f $tokenExistsQueryPath $CurrentPath 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Could not inspect the existing Genki provider configuration.`n$($tokenExistsOutput -join "`n")"
     }
@@ -184,7 +186,9 @@ and (.model_providers.genki.base_url | type == "string")
 and (.model_providers.genki.base_url | test("\\S"))
 '@
 
-    $baseUrlExistsOutput = & $FqPath -r $baseUrlExistsQuery $CurrentPath 2>&1
+    $baseUrlExistsQueryPath = Join-Path $TemporaryDirectory 'base-url-exists.fq'
+    [IO.File]::WriteAllText($baseUrlExistsQueryPath, $baseUrlExistsQuery, [Text.UTF8Encoding]::new($false))
+    $baseUrlExistsOutput = & $FqPath -r -f $baseUrlExistsQueryPath $CurrentPath 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Could not inspect the existing Genki provider base URL.`n$($baseUrlExistsOutput -join "`n")"
     }
@@ -316,7 +320,9 @@ try {
     $baseUrlInput = Join-Path $TempDir 'base-url.json'
     Write-BaseUrlInput -FqPath $FqPath -CurrentPath $current -BaseUrlInputPath $baseUrlInput -TemporaryDirectory $TempDir
 
-    $mergeOutput = & $FqPath -r -j -s $FqQuery $current $configSource $deleteSource $tokenInput $baseUrlInput 2>&1
+    $fqQueryPath = Join-Path $TempDir 'merge.fq'
+    [IO.File]::WriteAllText($fqQueryPath, $FqQuery, [Text.UTF8Encoding]::new($false))
+    $mergeOutput = & $FqPath -r -j -s -f $fqQueryPath $current $configSource $deleteSource $tokenInput $baseUrlInput 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Could not merge Codex config. The existing file was left unchanged.`n$($mergeOutput -join "`n")"
     }
