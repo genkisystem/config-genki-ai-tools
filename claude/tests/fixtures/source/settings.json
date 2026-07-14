@@ -7,6 +7,7 @@
   "items": ["managed"],
   "added": 42,
   "env": {
+    "ANTHROPIC_BASE_URL": "",
     "ANTHROPIC_AUTH_TOKEN": ""
   },
   "hooks": {

@@ -152,7 +152,10 @@ write_token_input() {
     printf '\n' > /dev/tty
   fi
 
-  [ -n "$token" ] || fail "ANTHROPIC_AUTH_TOKEN must not be empty"
+  if [ -z "$token" ]; then
+    unset token
+    return
+  fi
 
   token_raw="$TMP_DIR/token.txt"
   printf '%s' "$token" > "$token_raw"
@@ -162,6 +165,53 @@ write_token_input() {
   fi
   rm -f "$token_raw"
   unset token
+}
+
+write_base_url_input() {
+  base_url_input=$1
+  printf 'null\n' > "$base_url_input"
+
+  base_url_exists=$(
+    "$FQ_PATH" -r '
+      has("env")
+      and (.env | type == "object")
+      and (.env | has("ANTHROPIC_BASE_URL"))
+      and (.env.ANTHROPIC_BASE_URL | type == "string")
+      and (.env.ANTHROPIC_BASE_URL | test("\\S"))
+    ' "$TMP_DIR/current.json" < /dev/null
+  ) || fail "could not inspect the existing Claude base URL configuration"
+
+  case "$base_url_exists" in
+    true) return ;;
+    false) ;;
+    *) fail "could not determine whether ANTHROPIC_BASE_URL already has a value" ;;
+  esac
+
+  if [ "${GENKI_CLAUDE_ANTHROPIC_BASE_URL+x}" = "x" ]; then
+    base_url=$GENKI_CLAUDE_ANTHROPIC_BASE_URL
+  else
+    printf 'Enter Claude ANTHROPIC_BASE_URL: ' > /dev/tty
+    if ! IFS= read -r base_url < /dev/tty; then
+      fail "could not read ANTHROPIC_BASE_URL"
+    fi
+  fi
+
+  case "$base_url" in
+    *[![:space:]]*) ;;
+    *)
+      unset base_url
+      return
+      ;;
+  esac
+
+  base_url_raw="$TMP_DIR/base-url.txt"
+  printf '%s' "$base_url" > "$base_url_raw"
+  chmod 600 "$base_url_raw"
+  if ! "$FQ_PATH" -R -s '.' "$base_url_raw" < /dev/null > "$base_url_input"; then
+    fail "could not encode ANTHROPIC_BASE_URL"
+  fi
+  rm -f "$base_url_raw"
+  unset base_url
 }
 
 FQ_QUERY='
@@ -267,14 +317,19 @@ def upsert_managed_hook_blocks($settings; $managed_blocks):
 .[0] as $current
 | .[1] as $incoming
 | .[3] as $prompted_token
+| .[4] as $prompted_base_url
 | (
-    if $prompted_token == null then
-      $incoming
-      | delpaths([["env", "ANTHROPIC_AUTH_TOKEN"]])
-    else
-      $incoming
-      | setpath(["env", "ANTHROPIC_AUTH_TOKEN"]; $prompted_token)
-    end
+    $incoming
+    | if $prompted_token == null then
+        delpaths([["env", "ANTHROPIC_AUTH_TOKEN"]])
+      else
+        setpath(["env", "ANTHROPIC_AUTH_TOKEN"]; $prompted_token)
+      end
+    | if $prompted_base_url == null then
+        delpaths([["env", "ANTHROPIC_BASE_URL"]])
+      else
+        setpath(["env", "ANTHROPIC_BASE_URL"]; $prompted_base_url)
+      end
   ) as $effective_incoming
 | ($effective_incoming | [managed_hook_blocks]) as $managed_blocks
 | if (($managed_blocks | map(.id) | unique | length) != ($managed_blocks | length)) then
@@ -336,6 +391,7 @@ if ! "$FQ_PATH" -V '.' "$TMP_DIR/delete.json" < /dev/null > /dev/null; then
   fail "the downloaded Claude deletion file is not valid JSON"
 fi
 write_token_input "$TMP_DIR/token.json"
+write_base_url_input "$TMP_DIR/base-url.json"
 
 ACTIVE_STAGE=$(mktemp "$target_dir/.genki-config.XXXXXX")
 if ! "$FQ_PATH" -d json -Vs "$FQ_QUERY" \
@@ -343,6 +399,7 @@ if ! "$FQ_PATH" -d json -Vs "$FQ_QUERY" \
   "$TMP_DIR/settings.json" \
   "$TMP_DIR/delete.json" \
   "$TMP_DIR/token.json" \
+  "$TMP_DIR/base-url.json" \
   < /dev/null > "$ACTIVE_STAGE"; then
   fail "could not merge Claude settings; the existing file was left unchanged"
 fi

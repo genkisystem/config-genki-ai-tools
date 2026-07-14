@@ -1,0 +1,3 @@
+[model_providers.genki]
+base_url = ""
+experimental_bearer_token = "existing-token"

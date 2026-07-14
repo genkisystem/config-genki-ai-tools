@@ -7,7 +7,7 @@ windows_path = "C:\\Users\\name"
 
 [model_providers]
   [model_providers.genki]
-    base_url = "https://llm.example.com/v1"
+    base_url = "https://codex.test.example/v1"
     experimental_bearer_token = "test-bearer-token"
     name = "Genki"
 

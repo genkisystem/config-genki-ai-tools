@@ -135,7 +135,7 @@ and (.env | has("ANTHROPIC_AUTH_TOKEN"))
     }
 
     if ([string]::IsNullOrEmpty($token)) {
-        throw 'ANTHROPIC_AUTH_TOKEN must not be empty.'
+        return
     }
 
     $tokenRawPath = Join-Path $TemporaryDirectory 'token.txt'
@@ -150,6 +150,61 @@ and (.env | has("ANTHROPIC_AUTH_TOKEN"))
     finally {
         Remove-Item -LiteralPath $tokenRawPath -Force -ErrorAction SilentlyContinue
         $token = $null
+    }
+}
+
+function Write-BaseUrlInput {
+    param(
+        [string]$FqPath,
+        [string]$CurrentPath,
+        [string]$BaseUrlInputPath,
+        [string]$TemporaryDirectory
+    )
+
+    [IO.File]::WriteAllText($BaseUrlInputPath, "null`n", [Text.UTF8Encoding]::new($false))
+
+    $baseUrlExistsQuery = @'
+has("env")
+and (.env | type == "object")
+and (.env | has("ANTHROPIC_BASE_URL"))
+and (.env.ANTHROPIC_BASE_URL | type == "string")
+and (.env.ANTHROPIC_BASE_URL | test("\\S"))
+'@
+
+    $baseUrlExistsOutput = & $FqPath -r $baseUrlExistsQuery $CurrentPath 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not inspect the existing Claude base URL configuration.`n$($baseUrlExistsOutput -join "`n")"
+    }
+
+    $baseUrlExists = ($baseUrlExistsOutput -join '').Trim().ToLowerInvariant()
+    if ($baseUrlExists -eq 'true') {
+        return
+    }
+    if ($baseUrlExists -ne 'false') {
+        throw 'Could not determine whether ANTHROPIC_BASE_URL already has a value.'
+    }
+
+    $baseUrl = [Environment]::GetEnvironmentVariable('GENKI_CLAUDE_ANTHROPIC_BASE_URL')
+    if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+        $baseUrl = Read-Host 'Enter Claude ANTHROPIC_BASE_URL'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+        return
+    }
+
+    $baseUrlRawPath = Join-Path $TemporaryDirectory 'base-url.txt'
+    [IO.File]::WriteAllText($baseUrlRawPath, $baseUrl, [Text.UTF8Encoding]::new($false))
+    try {
+        $encodedBaseUrl = & $FqPath -R -s '.' $baseUrlRawPath 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not encode ANTHROPIC_BASE_URL.`n$($encodedBaseUrl -join "`n")"
+        }
+        [IO.File]::WriteAllText($BaseUrlInputPath, (($encodedBaseUrl -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+    }
+    finally {
+        Remove-Item -LiteralPath $baseUrlRawPath -Force -ErrorAction SilentlyContinue
+        $baseUrl = $null
     }
 }
 
@@ -322,14 +377,19 @@ def upsert_managed_hook_blocks($settings; $managed_blocks):
 .[0] as $current
 | .[1] as $incoming
 | .[3] as $prompted_token
+| .[4] as $prompted_base_url
 | (
-    if $prompted_token == null then
-      $incoming
-      | delpaths([["env", "ANTHROPIC_AUTH_TOKEN"]])
-    else
-      $incoming
-      | setpath(["env", "ANTHROPIC_AUTH_TOKEN"]; $prompted_token)
-    end
+    $incoming
+    | if $prompted_token == null then
+        delpaths([["env", "ANTHROPIC_AUTH_TOKEN"]])
+      else
+        setpath(["env", "ANTHROPIC_AUTH_TOKEN"]; $prompted_token)
+      end
+    | if $prompted_base_url == null then
+        delpaths([["env", "ANTHROPIC_BASE_URL"]])
+      else
+        setpath(["env", "ANTHROPIC_BASE_URL"]; $prompted_base_url)
+      end
   ) as $effective_incoming
 | ($effective_incoming | [managed_hook_blocks]) as $managed_blocks
 | if (($managed_blocks | map(.id) | unique | length) != ($managed_blocks | length)) then
@@ -393,7 +453,10 @@ try {
     $tokenInput = Join-Path $TempDir 'token.json'
     Write-TokenInput -FqPath $FqPath -CurrentPath $current -TokenInputPath $tokenInput -TemporaryDirectory $TempDir
 
-    $mergeOutput = & $FqPath -d json -V -s $FqQuery $current $settingsSource $deleteSource $tokenInput 2>&1
+    $baseUrlInput = Join-Path $TempDir 'base-url.json'
+    Write-BaseUrlInput -FqPath $FqPath -CurrentPath $current -BaseUrlInputPath $baseUrlInput -TemporaryDirectory $TempDir
+
+    $mergeOutput = & $FqPath -d json -V -s $FqQuery $current $settingsSource $deleteSource $tokenInput $baseUrlInput 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Could not merge Claude settings. The existing file was left unchanged.`n$($mergeOutput -join "`n")"
     }

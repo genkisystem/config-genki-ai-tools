@@ -146,7 +146,7 @@ and (.model_providers.genki | has("experimental_bearer_token"))
     }
 
     if ([string]::IsNullOrEmpty($token)) {
-        throw 'The Genki bearer token must not be empty.'
+        return
     }
 
     $tokenRawPath = Join-Path $TemporaryDirectory 'token.txt'
@@ -161,6 +161,63 @@ and (.model_providers.genki | has("experimental_bearer_token"))
     finally {
         Remove-Item -LiteralPath $tokenRawPath -Force -ErrorAction SilentlyContinue
         $token = $null
+    }
+}
+
+function Write-BaseUrlInput {
+    param(
+        [string]$FqPath,
+        [string]$CurrentPath,
+        [string]$BaseUrlInputPath,
+        [string]$TemporaryDirectory
+    )
+
+    [IO.File]::WriteAllText($BaseUrlInputPath, "null`n", [Text.UTF8Encoding]::new($false))
+
+    $baseUrlExistsQuery = @'
+has("model_providers")
+and (.model_providers | type == "object")
+and (.model_providers | has("genki"))
+and (.model_providers.genki | type == "object")
+and (.model_providers.genki | has("base_url"))
+and (.model_providers.genki.base_url | type == "string")
+and (.model_providers.genki.base_url | test("\\S"))
+'@
+
+    $baseUrlExistsOutput = & $FqPath -r $baseUrlExistsQuery $CurrentPath 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not inspect the existing Genki provider base URL.`n$($baseUrlExistsOutput -join "`n")"
+    }
+
+    $baseUrlExists = ($baseUrlExistsOutput -join '').Trim().ToLowerInvariant()
+    if ($baseUrlExists -eq 'true') {
+        return
+    }
+    if ($baseUrlExists -ne 'false') {
+        throw 'Could not determine whether the Genki provider base URL already has a value.'
+    }
+
+    $baseUrl = [Environment]::GetEnvironmentVariable('GENKI_CODEX_PROVIDER_BASE_URL')
+    if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+        $baseUrl = Read-Host 'Enter Codex Genki provider base URL'
+    }
+
+    if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+        return
+    }
+
+    $baseUrlRawPath = Join-Path $TemporaryDirectory 'base-url.txt'
+    [IO.File]::WriteAllText($baseUrlRawPath, $baseUrl, [Text.UTF8Encoding]::new($false))
+    try {
+        $encodedBaseUrl = & $FqPath -R -s '.' $baseUrlRawPath 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not encode the Genki provider base URL.`n$($encodedBaseUrl -join "`n")"
+        }
+        [IO.File]::WriteAllText($BaseUrlInputPath, (($encodedBaseUrl -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+    }
+    finally {
+        Remove-Item -LiteralPath $baseUrlRawPath -Force -ErrorAction SilentlyContinue
+        $baseUrl = $null
     }
 }
 
@@ -191,17 +248,25 @@ def prune_empty_objects:
 .[0] as $current
 | .[1] as $incoming
 | .[3] as $prompted_token
+| .[4] as $prompted_base_url
 | (
-    if $prompted_token == null then
-      $incoming
-      | delpaths([["model_providers", "genki", "experimental_bearer_token"]])
-    else
-      $incoming
-      | setpath(
+    $incoming
+    | if $prompted_token == null then
+        delpaths([["model_providers", "genki", "experimental_bearer_token"]])
+      else
+        setpath(
           ["model_providers", "genki", "experimental_bearer_token"];
           $prompted_token
         )
-    end
+      end
+    | if $prompted_base_url == null then
+        delpaths([["model_providers", "genki", "base_url"]])
+      else
+        setpath(
+          ["model_providers", "genki", "base_url"];
+          $prompted_base_url
+        )
+      end
   ) as $effective_incoming
 | ($current * $effective_incoming) as $merged
 | .[2] as $manifest
@@ -248,7 +313,10 @@ try {
     $tokenInput = Join-Path $TempDir 'token.json'
     Write-TokenInput -FqPath $FqPath -CurrentPath $current -TokenInputPath $tokenInput -TemporaryDirectory $TempDir
 
-    $mergeOutput = & $FqPath -r -j -s $FqQuery $current $configSource $deleteSource $tokenInput 2>&1
+    $baseUrlInput = Join-Path $TempDir 'base-url.json'
+    Write-BaseUrlInput -FqPath $FqPath -CurrentPath $current -BaseUrlInputPath $baseUrlInput -TemporaryDirectory $TempDir
+
+    $mergeOutput = & $FqPath -r -j -s $FqQuery $current $configSource $deleteSource $tokenInput $baseUrlInput 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "Could not merge Codex config. The existing file was left unchanged.`n$($mergeOutput -join "`n")"
     }

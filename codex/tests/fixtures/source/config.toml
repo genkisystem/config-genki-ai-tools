@@ -10,6 +10,6 @@ hide_spawn_agent_metadata = false
 tool_namespace = "agents"
 
 [model_providers.genki]
-base_url = "https://llm.example.com/v1"
+base_url = ""
 experimental_bearer_token = ""
 name = "Genki"

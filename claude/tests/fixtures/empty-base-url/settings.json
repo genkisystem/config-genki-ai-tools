@@ -1,0 +1,6 @@
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "existing-token",
+    "ANTHROPIC_BASE_URL": ""
+  }
+}

@@ -1,7 +1,8 @@
 {
   "added": 42,
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "test-anthropic-token"
+    "ANTHROPIC_AUTH_TOKEN": "test-anthropic-token",
+    "ANTHROPIC_BASE_URL": "https://claude.test.example"
   },
   "hooks": {
     "PreToolUse": [

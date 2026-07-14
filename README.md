@@ -17,8 +17,10 @@ The installers are organized into two independent directories:
 - Existing files are backed up as `*.bak.YYYYMMDDHHMMSS` before they are updated.
 - Files are parsed and serialized again, so key order, formatting, and existing TOML comments may change. Backups retain the original content.
 - Codex string values are written as TOML basic strings with double quotes.
-- If `model_providers.genki.experimental_bearer_token` is missing from the current Codex config, the installer securely prompts for it. Existing values are preserved.
-- If `env.ANTHROPIC_AUTH_TOKEN` is missing from the current Claude settings, the installer securely prompts for it. Existing values are preserved.
+- If `model_providers.genki.experimental_bearer_token` is missing from the current Codex config, the installer securely prompts for it. Existing values are preserved, and empty input leaves the field unchanged.
+- If `env.ANTHROPIC_AUTH_TOKEN` is missing from the current Claude settings, the installer securely prompts for it. Existing values are preserved, and empty input leaves the field unchanged.
+- If `model_providers.genki.base_url` is missing, empty, or whitespace-only in the current Codex config, the installer prompts for it. Existing non-empty values are preserved, and empty input leaves the field unchanged.
+- If `env.ANTHROPIC_BASE_URL` is missing, empty, or whitespace-only in the current Claude settings, the installer prompts for it. Existing non-empty values are preserved, and empty input leaves the field unchanged.
 - A Claude matcher block containing one command with the marker `GENKI_HOOK_ID=<id>;` is managed as a complete block. A matching ID replaces the complete existing block; a missing ID appends the complete block. Duplicate IDs cause the installer to fail without changing the existing settings.
 - The managed `deny_nested_agent` hook uses Bash and the standard `grep` command on macOS/Linux/WSL. The PowerShell installer automatically converts it to a native PowerShell command on Windows. No additional hook runtime dependency is required.
 - The installers download a pinned version of `fq` and verify its SHA-256 checksum before execution.
@@ -149,6 +151,8 @@ model = "__GENKI_DELETE_ANY__"
 | `GENKI_FQ_PATH` | Use a local `fq` binary instead of downloading the pinned version |
 | `GENKI_CODEX_EXPERIMENTAL_BEARER_TOKEN` | Provide the Genki bearer token for non-interactive Codex installation |
 | `GENKI_CLAUDE_ANTHROPIC_AUTH_TOKEN` | Provide `ANTHROPIC_AUTH_TOKEN` for non-interactive Claude installation |
+| `GENKI_CODEX_PROVIDER_BASE_URL` | Provide `model_providers.genki.base_url` for non-interactive Codex installation |
+| `GENKI_CLAUDE_ANTHROPIC_BASE_URL` | Provide `ANTHROPIC_BASE_URL` for non-interactive Claude installation |
 
 To test another branch or host on macOS/Linux, pass the variable to the `bash` process after the pipe:
 
