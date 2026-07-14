@@ -1,0 +1,15 @@
+model = "managed-model"
+profiles = ["managed"]
+
+[nested]
+overwrite = "managed"
+added = true
+
+[features.multi_agent_v2]
+hide_spawn_agent_metadata = false
+tool_namespace = "agents"
+
+[model_providers.genki]
+base_url = "https://llm.example.com/v1"
+experimental_bearer_token = ""
+name = "Genki"

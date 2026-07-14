@@ -1,0 +1,27 @@
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "existing-token"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GENKI_HOOK_ID=deny_nested_agent; first-copy"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GENKI_HOOK_ID=deny_nested_agent; duplicate-copy"
+          }
+        ]
+      }
+    ]
+  }
+}

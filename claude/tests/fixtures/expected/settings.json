@@ -1,0 +1,47 @@
+{
+  "added": 42,
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "test-anthropic-token"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "existing-bash-hook",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "GENKI_HOOK_ID=deny_nested_agent; new-command",
+            "type": "command"
+          }
+        ],
+        "matcher": "Agent"
+      },
+      {
+        "hooks": [
+          {
+            "command": "GENKI_HOOK_ID=deny_nested_agent_2; existing-second-managed-block",
+            "type": "command"
+          }
+        ],
+        "matcher": "Agent"
+      }
+    ]
+  },
+  "items": [
+    "managed"
+  ],
+  "keep": "local",
+  "nested": {
+    "added": true,
+    "keep": 1,
+    "overwrite": "managed"
+  },
+  "overwrite": "managed"
+}

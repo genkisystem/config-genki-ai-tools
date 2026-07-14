@@ -1,0 +1,25 @@
+{
+  "overwrite": "managed",
+  "nested": {
+    "overwrite": "managed",
+    "added": true
+  },
+  "items": ["managed"],
+  "added": 42,
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": ""
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GENKI_HOOK_ID=deny_nested_agent; new-command"
+          }
+        ]
+      }
+    ]
+  }
+}

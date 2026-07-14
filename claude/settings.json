@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ENABLE_EXPERIMENTAL_MCP_CLI": "true",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY": "3",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "272000"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GENKI_HOOK_ID=deny_nested_agent; input=$(cat); if printf '%s\\n' \"$input\" | grep -Eq '\"agent_id\"[[:space:]]*:[[:space:]]*\"[^\"]+\"'; then printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Nested subagent creation is disabled: a subagent cannot spawn another Agent.\"}}'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+model = "local-model"
+local_only = "keep"
+profiles = ["local"]
+quoted_text = "say \"hello\""
+windows_path = "C:\\Users\\name"
+apostrophes = "it's John's"
+
+[nested]
+keep = 1
+overwrite = "local"

@@ -1,0 +1,3 @@
+[features.multi_agent_v2]
+hide_spawn_agent_metadata = "__GENKI_DELETE_ANY__"
+tool_namespace = "__GENKI_DELETE_ANY__"

@@ -1,0 +1,44 @@
+{
+  "keep": "local",
+  "overwrite": "local",
+  "nested": {
+    "keep": 1,
+    "overwrite": "local"
+  },
+  "items": ["local"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "existing-bash-hook"
+          }
+        ]
+      },
+      {
+        "matcher": "OldAgentMatcher",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GENKI_HOOK_ID=deny_nested_agent; old-command"
+          },
+          {
+            "type": "command",
+            "command": "this-hook-must-be-replaced-with-the-managed-block"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "GENKI_HOOK_ID=deny_nested_agent_2; existing-second-managed-block"
+          }
+        ]
+      }
+    ]
+  }
+}
