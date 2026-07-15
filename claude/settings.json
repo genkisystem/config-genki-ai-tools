@@ -19,5 +19,8 @@
         ]
       }
     ]
+  },
+  "skillOverrides": {
+    "code-review": "user-invocable-only"
   }
 }
