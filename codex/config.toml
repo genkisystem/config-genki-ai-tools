@@ -5,7 +5,3 @@ model_provider = "genki"
 [model_providers.genki]
   base_url = ""
   name = "Genki"
-
-[features.multi_agent_v2]
-  hide_spawn_agent_metadata = false
-  tool_namespace = "agents"
