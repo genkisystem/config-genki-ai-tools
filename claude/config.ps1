@@ -80,16 +80,25 @@ function Install-Fq {
     return $executable.FullName
 }
 
-function Assert-ValidJsonFile {
+function Assert-ValidJsonObjectFile {
     param(
         [string]$FqPath,
         [string]$Path,
         [string]$Label
     )
 
-    $validationOutput = & $FqPath -V '.' $Path 2>&1
+    $validationQuery = @'
+fromjson
+| if type == "object" then
+    .
+  else
+    error("the top-level JSON value must be an object")
+  end
+'@
+
+    $validationOutput = & $FqPath -R -s -V $validationQuery $Path 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "$Label is not valid JSON.`n$($validationOutput -join "`n")"
+        throw "$Label is not a valid JSON object.`n$($validationOutput -join "`n")"
     }
 }
 
@@ -448,11 +457,11 @@ try {
         [IO.File]::WriteAllText($current, "{}`n", [Text.UTF8Encoding]::new($false))
     }
 
-    Assert-ValidJsonFile -FqPath $FqPath -Path $current -Label 'The existing Claude settings file'
-    Assert-ValidJsonFile -FqPath $FqPath -Path $settingsSource -Label 'The downloaded Claude settings file'
-    Assert-ValidJsonFile -FqPath $FqPath -Path $deleteSource -Label 'The downloaded Claude deletion file'
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $current -Label 'The existing Claude settings file'
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $settingsSource -Label 'The downloaded Claude settings file'
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $deleteSource -Label 'The downloaded Claude deletion file'
     Set-WindowsManagedHook -SettingsPath $settingsSource
-    Assert-ValidJsonFile -FqPath $FqPath -Path $settingsSource -Label 'The platform-adjusted Claude settings file'
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $settingsSource -Label 'The platform-adjusted Claude settings file'
 
     $tokenInput = Join-Path $TempDir 'token.json'
     Write-TokenInput -FqPath $FqPath -CurrentPath $current -TokenInputPath $tokenInput -TemporaryDirectory $TempDir
@@ -470,10 +479,7 @@ try {
     $ActiveStage = Join-Path $targetDirectory ('.genki-config-' + [Guid]::NewGuid().ToString('N'))
     [IO.File]::WriteAllText($ActiveStage, (($mergeOutput -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 
-    $validationOutput = & $FqPath -d json -V '.' $ActiveStage 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Could not validate merged Claude settings. The existing file was left unchanged.`n$($validationOutput -join "`n")"
-    }
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $ActiveStage -Label 'The merged Claude settings file'
 
     Backup-File
     Move-Item -LiteralPath $ActiveStage -Destination $SettingsPath -Force

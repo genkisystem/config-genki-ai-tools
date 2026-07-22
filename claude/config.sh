@@ -116,6 +116,19 @@ backup_file() {
   fi
 }
 
+assert_valid_json_object() {
+  if ! "$FQ_PATH" -R -s -V '
+    fromjson
+    | if type == "object" then
+        .
+      else
+        error("the top-level JSON value must be an object")
+      end
+  ' "$1" < /dev/null > /dev/null; then
+    fail "$2 is not a valid JSON object"
+  fi
+}
+
 write_token_input() {
   token_input=$1
   printf 'null\n' > "$token_input"
@@ -381,15 +394,9 @@ else
   printf '{}\n' > "$TMP_DIR/current.json"
 fi
 
-if ! "$FQ_PATH" -V '.' "$TMP_DIR/current.json" < /dev/null > /dev/null; then
-  fail "the existing Claude settings file is not valid JSON"
-fi
-if ! "$FQ_PATH" -V '.' "$TMP_DIR/settings.json" < /dev/null > /dev/null; then
-  fail "the downloaded Claude settings file is not valid JSON"
-fi
-if ! "$FQ_PATH" -V '.' "$TMP_DIR/delete.json" < /dev/null > /dev/null; then
-  fail "the downloaded Claude deletion file is not valid JSON"
-fi
+assert_valid_json_object "$TMP_DIR/current.json" "the existing Claude settings file"
+assert_valid_json_object "$TMP_DIR/settings.json" "the downloaded Claude settings file"
+assert_valid_json_object "$TMP_DIR/delete.json" "the downloaded Claude deletion file"
 write_token_input "$TMP_DIR/token.json"
 write_base_url_input "$TMP_DIR/base-url.json"
 
@@ -404,9 +411,7 @@ if ! "$FQ_PATH" -d json -Vs "$FQ_QUERY" \
   fail "could not merge Claude settings; the existing file was left unchanged"
 fi
 
-if ! "$FQ_PATH" -d json -V '.' "$ACTIVE_STAGE" < /dev/null > /dev/null; then
-  fail "could not validate merged Claude settings; the existing file was left unchanged"
-fi
+assert_valid_json_object "$ACTIVE_STAGE" "the merged Claude settings file"
 
 chmod 600 "$ACTIVE_STAGE"
 backup_file

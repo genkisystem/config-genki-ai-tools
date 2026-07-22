@@ -1,0 +1,6 @@
+{
+  // This comment must cause strict JSON validation to fail.
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://claude.user.example"
+  }
+}

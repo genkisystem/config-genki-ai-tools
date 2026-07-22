@@ -16,6 +16,7 @@ The installers are organized into two independent directories:
 - Objects and tables are merged recursively; arrays are replaced entirely by repository arrays.
 - Existing files are backed up as `*.bak.YYYYMMDDHHMMSS` before they are updated.
 - Files are parsed and serialized again, so key order, formatting, and existing TOML comments may change. Backups retain the original content.
+- Claude configuration files must be strict JSON objects. JSON comments such as `//` and `/* ... */` are rejected before any existing settings are changed.
 - Codex string values are written as TOML basic strings with double quotes.
 - If `model_providers.genki.experimental_bearer_token` is missing from the current Codex config, the installer securely prompts for it. Existing values are preserved, and empty input leaves the field unchanged.
 - If `env.ANTHROPIC_AUTH_TOKEN` is missing from the current Claude settings, the installer securely prompts for it. Existing values are preserved, and empty input leaves the field unchanged.

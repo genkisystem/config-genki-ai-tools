@@ -77,6 +77,24 @@ fi
 diff -u "$CLAUDE_DIR/tests/fixtures/expected/deleted-object.json" "$TEST_HOME/.claude/settings.json"
 test "$(find "$TEST_HOME/.claude" -name 'settings.json.bak.*' | wc -l | tr -d ' ')" = "5"
 
+COMMENT_HOME="$TEST_HOME/comment"
+COMMENT_OUTPUT="$TEST_HOME/comment-output.log"
+mkdir -p "$COMMENT_HOME/.claude"
+cp "$CLAUDE_DIR/tests/fixtures/comment/settings.json" "$COMMENT_HOME/.claude/settings.json"
+
+if HOME="$COMMENT_HOME" \
+  GENKI_CLAUDE_SETTINGS_URL="file://$CLAUDE_DIR/tests/fixtures/source/settings.json" \
+  GENKI_CLAUDE_DELETE_URL="file://$CLAUDE_DIR/tests/fixtures/source/delete.json" \
+  GENKI_FQ_PATH="$FQ_PATH" \
+  sh "$CLAUDE_DIR/config.sh" >"$COMMENT_OUTPUT" 2>&1; then
+  printf 'Claude installer unexpectedly accepted JSON comments.\n' >&2
+  exit 1
+fi
+
+grep -F 'Error: the existing Claude settings file is not a valid JSON object' "$COMMENT_OUTPUT" >/dev/null
+diff -u "$CLAUDE_DIR/tests/fixtures/comment/settings.json" "$COMMENT_HOME/.claude/settings.json"
+test "$(find "$COMMENT_HOME/.claude" -name 'settings.json.bak.*' | wc -l | tr -d ' ')" = "0"
+
 DUPLICATE_HOME="$TEST_HOME/duplicate-hook"
 mkdir -p "$DUPLICATE_HOME/.claude"
 cp "$CLAUDE_DIR/tests/fixtures/duplicate-hook/settings.json" "$DUPLICATE_HOME/.claude/settings.json"
