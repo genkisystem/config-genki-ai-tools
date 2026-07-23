@@ -84,20 +84,24 @@ function Assert-ValidJsonObjectFile {
     param(
         [string]$FqPath,
         [string]$Path,
-        [string]$Label
+        [string]$Label,
+        [string]$QueryPath
     )
 
-    $validationQuery = @'
-fromjson
-| if type == "object" then
-    .
-  else
-    error("the top-level JSON value must be an object")
-  end
-'@
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell promotes native stderr to an error record when the
+        # global preference is Stop. Capture fq's parser error so the caller
+        # receives the contextual validation message below.
+        $ErrorActionPreference = 'Continue'
+        $validationOutput = & $FqPath -R -s -V -f $QueryPath $Path 2>&1
+        $validationExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
 
-    $validationOutput = & $FqPath -R -s -V $validationQuery $Path 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    if ($validationExitCode -ne 0) {
         throw "$Label is not a valid JSON object.`n$($validationOutput -join "`n")"
     }
 }
@@ -457,11 +461,22 @@ try {
         [IO.File]::WriteAllText($current, "{}`n", [Text.UTF8Encoding]::new($false))
     }
 
-    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $current -Label 'The existing Claude settings file'
-    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $settingsSource -Label 'The downloaded Claude settings file'
-    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $deleteSource -Label 'The downloaded Claude deletion file'
+    $validationQuery = @'
+fromjson
+| if type == "object" then
+    .
+  else
+    error("the top-level JSON value must be an object")
+  end
+'@
+    $validationQueryPath = Join-Path $TempDir 'validate-json-object.fq'
+    [IO.File]::WriteAllText($validationQueryPath, $validationQuery, [Text.UTF8Encoding]::new($false))
+
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $current -Label 'The existing Claude settings file' -QueryPath $validationQueryPath
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $settingsSource -Label 'The downloaded Claude settings file' -QueryPath $validationQueryPath
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $deleteSource -Label 'The downloaded Claude deletion file' -QueryPath $validationQueryPath
     Set-WindowsManagedHook -SettingsPath $settingsSource
-    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $settingsSource -Label 'The platform-adjusted Claude settings file'
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $settingsSource -Label 'The platform-adjusted Claude settings file' -QueryPath $validationQueryPath
 
     $tokenInput = Join-Path $TempDir 'token.json'
     Write-TokenInput -FqPath $FqPath -CurrentPath $current -TokenInputPath $tokenInput -TemporaryDirectory $TempDir
@@ -479,7 +494,7 @@ try {
     $ActiveStage = Join-Path $targetDirectory ('.genki-config-' + [Guid]::NewGuid().ToString('N'))
     [IO.File]::WriteAllText($ActiveStage, (($mergeOutput -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
 
-    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $ActiveStage -Label 'The merged Claude settings file'
+    Assert-ValidJsonObjectFile -FqPath $FqPath -Path $ActiveStage -Label 'The merged Claude settings file' -QueryPath $validationQueryPath
 
     Backup-File
     Move-Item -LiteralPath $ActiveStage -Destination $SettingsPath -Force
