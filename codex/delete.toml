@@ -1,2 +1,6 @@
 # Add keys with their expected values to delete them.
 # Use "__GENKI_DELETE_ANY__" to delete a key regardless of its current value.
+
+[features.multi_agent_v2]
+hide_spawn_agent_metadata = false
+tool_namespace = "agents"
