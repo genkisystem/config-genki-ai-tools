@@ -2,6 +2,9 @@
 # The installer merges it into the user's ~/.codex/config.toml file.
 model_provider = "genki"
 
+[features]
+  api_key_model_discovery = true
+
 [model_providers.genki]
   base_url = ""
   name = "Genki"

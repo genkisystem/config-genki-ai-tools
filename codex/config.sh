@@ -6,7 +6,7 @@ REPOSITORY_RAW_URL="https://raw.githubusercontent.com/genkisystem/config-genki-a
 FQ_VERSION="0.17.0"
 
 CONFIG_BASE_URL="${GENKI_CONFIG_BASE_URL:-$REPOSITORY_RAW_URL}"
-CONFIG_URL="${GENKI_CODEX_CONFIG_URL:-${CONFIG_BASE_URL%/}/codex/config.toml}"
+CONFIG_URL="${GENKI_CODEX_CONFIG_URL:-${CONFIG_BASE_URL%/}/codex/config.toml?v=$(date +%s)}"
 DELETE_URL="${GENKI_CODEX_DELETE_URL:-${CONFIG_BASE_URL%/}/codex/delete.toml}"
 CONFIG_PATH="${CODEX_CONFIG_PATH:-${CODEX_HOME:-$HOME/.codex}/config.toml}"
 
@@ -333,4 +333,8 @@ mv -f "$ACTIVE_STAGE" "$CONFIG_PATH"
 ACTIVE_STAGE=""
 
 log "Updated: $CONFIG_PATH"
+if command -v codex >/dev/null 2>&1; then
+  log "Restarting Codex app server daemon..."
+  codex app-server daemon restart
+fi
 log "Codex configuration installed successfully. Managed values override matching local values."

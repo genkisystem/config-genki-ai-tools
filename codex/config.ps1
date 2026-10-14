@@ -226,7 +226,7 @@ and (.model_providers.genki.base_url | test("\\S"))
 }
 
 $ConfigBaseUrl = (Get-EnvironmentValue 'GENKI_CONFIG_BASE_URL' $RepositoryRawUrl).TrimEnd('/')
-$ConfigUrl = Get-EnvironmentValue 'GENKI_CODEX_CONFIG_URL' "$ConfigBaseUrl/codex/config.toml"
+$ConfigUrl = Get-EnvironmentValue 'GENKI_CODEX_CONFIG_URL' "$ConfigBaseUrl/codex/config.toml?v=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 $DeleteUrl = Get-EnvironmentValue 'GENKI_CODEX_DELETE_URL' "$ConfigBaseUrl/codex/delete.toml"
 $UserHome = [Environment]::GetFolderPath('UserProfile')
 $CodexHome = Get-EnvironmentValue 'CODEX_HOME' (Join-Path $UserHome '.codex')
@@ -340,6 +340,14 @@ try {
     $ActiveStage = $null
 
     Write-Host "Updated: $ConfigPath"
+    $codexCommand = Get-Command codex -ErrorAction SilentlyContinue
+    if ($null -ne $codexCommand) {
+        Write-Host 'Restarting Codex app server daemon...'
+        & $codexCommand app-server daemon restart
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Codex configuration was updated, but restarting the app server daemon failed.'
+        }
+    }
     Write-Host 'Codex configuration installed successfully. Managed values override matching local values.'
 }
 finally {

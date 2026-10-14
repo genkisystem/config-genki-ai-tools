@@ -4,7 +4,7 @@ setlocal EnableExtensions
 if defined GENKI_CONFIG_CODEX_PS1_URL (
   set "INSTALL_PS1_URL=%GENKI_CONFIG_CODEX_PS1_URL%"
 ) else (
-  set "INSTALL_PS1_URL=https://raw.githubusercontent.com/genkisystem/config-genki-ai-tools/main/codex/config.ps1"
+  set "INSTALL_PS1_URL=https://raw.githubusercontent.com/genkisystem/config-genki-ai-tools/main/codex/config.ps1?v=%RANDOM%-%RANDOM%"
 )
 
 set "INSTALL_PS1=%TEMP%\genki-config-codex-%RANDOM%-%RANDOM%.ps1"
