@@ -5,3 +5,4 @@ model_provider = "genki"
 [model_providers.genki]
   base_url = ""
   name = "Genki"
+  model_catalog_url = "https://raw.githubusercontent.com/genkisystem/config-genki-ai-tools/main/codex/models.json"

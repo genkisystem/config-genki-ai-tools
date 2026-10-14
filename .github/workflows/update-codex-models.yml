@@ -1,0 +1,47 @@
+name: Update Codex models
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-codex-models
+  cancel-in-progress: false
+
+jobs:
+  update-models:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Generate model catalog
+        run: |
+          TAG=$(curl -fsSL https://api.github.com/repos/openai/codex/releases/latest |
+            jq -er '.tag_name')
+          curl -fsSL \
+            "https://raw.githubusercontent.com/openai/codex/$TAG/codex-rs/models-manager/models.json" |
+            jq '(.models[] | select(.slug == "gpt-6.1-sol") | .context_window) = 500000' \
+            > codex/models.json
+
+      - name: Commit and push changes
+        run: |
+          git add codex/models.json
+          if git diff --cached --quiet; then
+            echo "Model catalog is unchanged."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(codex): update bundled model catalog'
+          git push origin "HEAD:$TARGET_BRANCH"
