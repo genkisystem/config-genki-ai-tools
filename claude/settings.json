@@ -6,7 +6,10 @@
       "autoCompactWindow": 500000
     },
     "sonnet": {
-      "autoCompactWindow": 500000
+      "autoCompactWindow": 1000000
+    },
+    "haiku": {
+      "autoCompactWindow": 1000000
     }
   },
   "env": {
