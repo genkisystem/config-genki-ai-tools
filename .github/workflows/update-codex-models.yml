@@ -27,14 +27,16 @@ jobs:
 
       - name: Generate model catalog
         run: |
-          TAG=$(curl -fsSL https://api.github.com/repos/openai/codex/releases/latest |
-            jq -er '.tag_name')
-          curl -fsSL \
-            "https://raw.githubusercontent.com/openai/codex/$TAG/codex-rs/models-manager/models.json" |
+          tmp_file=$(mktemp)
+          trap 'rm -f "$tmp_file"' EXIT
+          curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+            "https://raw.githubusercontent.com/openai/codex/main/codex-rs/models-manager/models.json" |
             jq '(.models[] | select(.slug == "gpt-6.1-sol") | .context_window) = 500000
               | (.models[] | select(.slug == "gpt-6.1-terra" or .slug == "gpt-6-luna")
                 | .context_window) = 872000' \
-            > codex/models.json
+            > "$tmp_file"
+          [ -s "$tmp_file" ]
+          mv "$tmp_file" codex/models.json
 
       - name: Commit and push changes
         run: |
